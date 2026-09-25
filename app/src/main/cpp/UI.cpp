@@ -172,6 +172,77 @@ void UI::drawCircle(float cx, float cy, float radius, float r, float g, float b,
     glBindVertexArray(0);
 }
 
+void UI::drawHotbar(InputManager& input) {
+    float slot = screenHeight * 0.065f;
+    float gap = slot * 0.12f;
+    int n = InputManager::HOTBAR_SIZE;
+    float totalW = n * slot + (n - 1) * gap;
+    float startX = (screenWidth - totalW) * 0.5f;
+    float y = screenHeight - screenHeight * 0.035f - slot;
+
+    for (int i = 0; i < n; ++i) {
+        float x = startX + i * (slot + gap);
+        bool selected = (i == input.selectedSlot);
+        if (selected) {
+            // Bright outline behind the slot to mark the active one
+            float pad = slot * 0.08f;
+            drawRect(x - pad, y - pad, slot + pad * 2.0f, slot + pad * 2.0f, 1.0f, 1.0f, 1.0f, 0.9f);
+        }
+        drawRect(x, y, slot, slot, 0.0f, 0.0f, 0.0f, selected ? 0.35f : 0.25f);
+    }
+
+    hotbarX = startX;
+    hotbarY = y;
+    hotbarSlot = slot;
+    hotbarGap = gap;
+}
+
+void UI::drawHeartsAndHunger(float aspect) {
+    float slot = hotbarSlot > 0.0f ? hotbarSlot : screenHeight * 0.065f;
+    float pipR = slot * 0.16f;
+    float pipSpacing = slot * 0.38f;
+    float rowY = hotbarY - slot * 0.75f;
+
+    // Hearts: left-aligned above the hotbar (health is not simulated yet, so shown full)
+    float heartsStartX = hotbarX + pipR;
+    for (int i = 0; i < 10; ++i) {
+        float cx = heartsStartX + i * pipSpacing;
+        drawCircle(cx, rowY, pipR * 1.25f, 0.0f, 0.0f, 0.0f, 0.35f, aspect); // outline
+        drawCircle(cx, rowY, pipR, 0.82f, 0.1f, 0.15f, 0.95f, aspect);
+    }
+
+    // Hunger: right-aligned above the hotbar (not simulated yet, shown full)
+    float hungerEndX = hotbarX + (InputManager::HOTBAR_SIZE * hotbarSlot + (InputManager::HOTBAR_SIZE - 1) * hotbarGap) - pipR;
+    for (int i = 0; i < 10; ++i) {
+        float cx = hungerEndX - i * pipSpacing;
+        drawCircle(cx, rowY, pipR * 1.25f, 0.0f, 0.0f, 0.0f, 0.35f, aspect); // outline
+        drawCircle(cx, rowY, pipR, 0.75f, 0.45f, 0.15f, 0.95f, aspect);
+    }
+}
+
+void UI::drawTopBar(float aspect) {
+    float margin = screenHeight * 0.025f;
+    float r = screenHeight * 0.028f;
+    float spacing = r * 2.6f;
+    float y = margin + r;
+    float x = screenWidth - margin - r;
+
+    // Pause / menu
+    drawCircle(x, y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
+    drawRect(x - r * 0.35f, y - r * 0.45f, r * 0.22f, r * 0.9f, 1.0f, 1.0f, 1.0f, 0.9f);
+    drawRect(x + r * 0.1f, y - r * 0.45f, r * 0.22f, r * 0.9f, 1.0f, 1.0f, 1.0f, 0.9f);
+
+    // Chat
+    x -= spacing;
+    drawCircle(x, y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
+    drawRect(x - r * 0.5f, y - r * 0.3f, r * 1.0f, r * 0.6f, 1.0f, 1.0f, 1.0f, 0.9f);
+
+    // View / perspective toggle
+    x -= spacing;
+    drawCircle(x, y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
+    drawCircle(x, y, r * 0.5f, 1.0f, 1.0f, 1.0f, 0.9f, aspect);
+}
+
 void UI::render(InputManager& input, const glm::vec3& playerPos, float timeOfDay) {
     (void)timeOfDay;
     glDisable(GL_DEPTH_TEST);
@@ -200,6 +271,11 @@ void UI::render(InputManager& input, const glm::vec3& playerPos, float timeOfDay
     float br = input.jumpButtonRadius;
     drawCircle(bx, by, br, 1.0f, 1.0f, 1.0f, 0.3f, aspect);
     drawCircle(bx, by, br * 0.75f, 0.4f, 0.9f, 0.4f, 0.6f, aspect);
+
+    // HUD: hotbar + hearts/hunger + top bar (matches the reference layout)
+    drawHotbar(input);
+    drawHeartsAndHunger(aspect);
+    drawTopBar(aspect);
 
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);

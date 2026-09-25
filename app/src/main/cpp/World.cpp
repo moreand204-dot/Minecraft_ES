@@ -141,10 +141,11 @@ void World::update(const glm::vec3& playerPos, int viewDistance) {
         }
     }
 
-    // Build meshes
+    // Build meshes (also rebuild chunks whose neighbor just spawned and marked them dirty,
+    // even if they already had a mesh built before)
     for (auto& kv : chunks) {
         Chunk* c = kv.second.get();
-        if (c->generated && c->dirty && c->meshBuilt == false) {
+        if (c->generated && c->dirty) {
             c->buildMesh(this);
         }
     }

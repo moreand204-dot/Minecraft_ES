@@ -26,12 +26,19 @@ private:
 
     int screenWidth = 0, screenHeight = 0;
 
+    // Hotbar layout, computed each frame by drawHotbar() and reused by drawHeartsAndHunger()
+    float hotbarX = 0.0f, hotbarY = 0.0f, hotbarSlot = 0.0f, hotbarGap = 0.0f;
+
     void initQuad();
     void initCircle();
 
     void drawRect(float x, float y, float w, float h, float r, float g, float b, float a);
     void drawCircle(float cx, float cy, float radius, float r, float g, float b, float a, float aspect);
     void drawTexturedQuad(GLuint texture, float x, float y, float w, float h);
+
+    void drawHotbar(InputManager& input);
+    void drawHeartsAndHunger(float aspect);
+    void drawTopBar(float aspect);
 
     GLuint createTextTexture(const char* text, int fontSize, int* outW, int* outH);
 };

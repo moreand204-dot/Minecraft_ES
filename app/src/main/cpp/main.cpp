@@ -196,38 +196,7 @@ void Engine::createSurface() {
         int seed = (int)(std::chrono::system_clock::now().time_since_epoch().count() & 0x7FFFFFFF);
         world = std::make_unique<World>(seed);
         player = std::make_unique<Player>();
-
-        const int initialViewDistance = 2;
-        glm::vec3 spawnXZ(8.5f, 0.0f, 8.5f);
-        world->update(spawnXZ, initialViewDistance);
-
-        int spawnX = 8;
-        int spawnZ = 8;
-        int bestY = -1;
-        for (int radius = 0; radius <= 8 && bestY < 0; ++radius) {
-            for (int dz = -radius; dz <= radius && bestY < 0; ++dz) {
-                for (int dx = -radius; dx <= radius; ++dx) {
-                    if (radius > 0 && std::abs(dx) != radius && std::abs(dz) != radius) continue;
-                    int x = spawnX + dx;
-                    int z = spawnZ + dz;
-                    int terrainY = (int)std::floor(world->getTerrainHeight(x, z));
-                    if (terrainY < 1 || terrainY + 3 >= CHUNK_SIZE_Y) continue;
-                    BlockType ground = world->getBlockAt(x, terrainY, z);
-                    BlockType above1 = world->getBlockAt(x, terrainY + 1, z);
-                    BlockType above2 = world->getBlockAt(x, terrainY + 2, z);
-                    if (Block::isSolid(ground) && above1 == BlockType::Air && above2 == BlockType::Air) {
-                        spawnX = x;
-                        spawnZ = z;
-                        bestY = terrainY;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (bestY < 0) bestY = (int)std::floor(world->getTerrainHeight(spawnX, spawnZ));
-        player->position = glm::vec3(spawnX + 0.5f, bestY + 1.05f, spawnZ + 0.5f);
-        player->onGround = true;
+        player->position = glm::vec3(8.5f, 120.0f, 8.5f);
         timeOfDay = 0.25f;
 
         // Get save path from native activity
@@ -317,7 +286,8 @@ void Engine::update(float dt) {
 
     player->update(dt, world.get(), moveInput, jump);
 
-    world->update(player->position, 2);
+    // Update world (chunk loading)
+    world->update(player->position, 6);
 
     // Block interaction via raycast
     glm::vec3 eye = player->getEyePosition();
@@ -381,6 +351,7 @@ void Engine::frame() {
 
     if (dt > 0.1f) dt = 0.1f;
 
+    input.tick(dt); // detect long-press-to-mine even while the finger stays still
     handleInput();
     update(dt);
     render();

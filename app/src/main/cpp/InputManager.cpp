@@ -33,6 +33,7 @@ void InputManager::onTouchDown(int id, float x, float y) {
     p.y = y;
     p.startX = x;
     p.startY = y;
+    p.holdElapsed = 0.0f;
     p.longPressTriggered = false;
 
     // Determine role based on position
@@ -70,13 +71,41 @@ void InputManager::onTouchMove(int id, float x, float y) {
         }
         joystickDelta = glm::vec2(dx / joystickRadius, dy / joystickRadius);
     } else if (p.role == 2) {
-        float dx = x - p.x;
-        float dy = y - p.y;
-        lookDelta += glm::vec2(dx, dy);
+        // Once a long-press (mining) has been recognized on this finger, freeze the
+        // camera so small tremors while mining don't spin the view.
+        if (!p.longPressTriggered) {
+            float dx = x - p.x;
+            float dy = y - p.y;
+            lookDelta += glm::vec2(dx, dy);
+        }
     }
 
     p.x = x;
     p.y = y;
+}
+
+void InputManager::tick(float dt) {
+    for (int i = 0; i < MAX_POINTERS; ++i) {
+        PointerState& p = pointers[i];
+        if (!p.active || p.role != 2 || p.longPressTriggered) continue;
+
+        float dx = p.x - p.startX;
+        float dy = p.y - p.startY;
+        float moveDist = std::sqrt(dx * dx + dy * dy);
+
+        if (moveDist > MOVE_THRESHOLD) {
+            // Finger is dragging (looking around), not holding still on a block.
+            // Reset the timer so a subsequent still-hold can still mine.
+            p.holdElapsed = 0.0f;
+            continue;
+        }
+
+        p.holdElapsed += dt;
+        if (p.holdElapsed >= HOLD_THRESHOLD) {
+            p.longPressTriggered = true;
+            breakPressed = true; // consumed by Engine::update() this frame
+        }
+    }
 }
 
 void InputManager::onTouchUp(int id, float x, float y) {
@@ -90,8 +119,9 @@ void InputManager::onTouchUp(int id, float x, float y) {
         float dx = x - p.startX;
         float dy = y - p.startY;
         float moveDist = std::sqrt(dx * dx + dy * dy);
-        if (moveDist < 20.0f) {
-            // Tap = place block
+        // Only a quick, short tap places a block. If this finger already triggered
+        // mining (long press), releasing it must NOT also place a block.
+        if (moveDist < 20.0f && !p.longPressTriggered) {
             placePressed = true;
             tapX = x;
             tapY = y;

@@ -35,16 +35,27 @@ public:
     void onTouchMove(int id, float x, float y);
     void onTouchUp(int id, float x, float y);
 
+    // Must be called once per frame (before reading breakPressed) so long-press
+    // mining can be detected even while the finger stays perfectly still.
+    void tick(float dt);
+
     void reset();
+
+    // Hotbar (visual selection only)
+    int selectedSlot = 0;
+    static const int HOTBAR_SIZE = 9;
 
 private:
     static const int MAX_POINTERS = 10;
+    static constexpr float HOLD_THRESHOLD = 0.35f;  // seconds to trigger mining
+    static constexpr float MOVE_THRESHOLD = 25.0f;  // px of drift still counted as "held still"
     struct PointerState {
         bool active = false;
         float x = 0.0f, y = 0.0f;
         float startX = 0.0f, startY = 0.0f;
         int role = 0; // 0=none, 1=joystick, 2=look, 3=jump, 4=place/break
         float startTime = 0.0f;
+        float holdElapsed = 0.0f;
         bool longPressTriggered = false;
     };
     PointerState pointers[MAX_POINTERS];
