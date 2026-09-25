@@ -50,12 +50,12 @@ void World::generateChunk(Chunk* chunk) {
 
 double World::getTerrainHeight(double worldX, double worldZ) const {
     double h = terrainNoise.fbm2D(worldX * 0.01, worldZ * 0.01, 4, 0.5, 2.0);
-    // Map to 50..90 range
-    double height = 65.0 + h * 25.0;
+    // Map to roughly 62..94 range, well above sea level (62) so land dominates
+    double height = 78.0 + h * 16.0;
 
     // Add some hilliness
     double h2 = terrainNoise.fbm2D(worldX * 0.02 + 100, worldZ * 0.02 + 100, 2, 0.5, 2.0);
-    height += h2 * 8.0;
+    height += h2 * 6.0;
 
     return height;
 }
