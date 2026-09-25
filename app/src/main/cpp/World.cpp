@@ -98,7 +98,7 @@ void World::update(const glm::vec3& playerPos, int viewDistance) {
     int pcx = (int)std::floor(playerPos.x / CHUNK_SIZE_X);
     int pcz = (int)std::floor(playerPos.z / CHUNK_SIZE_Z);
 
-    if (pcx == lastPlayerChunkX && pcz == lastPlayerChunkZ) {
+    if (chunksInitialized && pcx == lastPlayerChunkX && pcz == lastPlayerChunkZ) {
         for (auto& kv : chunks) {
             Chunk* c = kv.second.get();
             if (c->generated && c->dirty) {
@@ -110,6 +110,7 @@ void World::update(const glm::vec3& playerPos, int viewDistance) {
 
     lastPlayerChunkX = pcx;
     lastPlayerChunkZ = pcz;
+    chunksInitialized = true;
 
     // Load chunks in radius
     for (int dx = -viewDistance; dx <= viewDistance; ++dx) {

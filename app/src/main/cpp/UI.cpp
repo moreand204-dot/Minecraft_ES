@@ -175,6 +175,7 @@ void UI::drawCircle(float cx, float cy, float radius, float r, float g, float b,
 void UI::render(InputManager& input, const glm::vec3& playerPos, float timeOfDay) {
     (void)timeOfDay;
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -202,5 +203,6 @@ void UI::render(InputManager& input, const glm::vec3& playerPos, float timeOfDay
 
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
     (void)playerPos;
 }

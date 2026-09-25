@@ -64,6 +64,7 @@ private:
 
     int lastPlayerChunkX = 0;
     int lastPlayerChunkZ = 0;
+    bool chunksInitialized = false;
 
     void generateChunk(Chunk* chunk);
 };
