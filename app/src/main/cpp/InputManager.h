@@ -41,9 +41,23 @@ public:
 
     void reset();
 
-    // Hotbar (visual selection only)
+    // Hotbar (touch selection + shared layout so UI draws the exact same rectangles)
     int selectedSlot = 0;
     static const int HOTBAR_SIZE = 9;
+    glm::vec2 hotbarOrigin = glm::vec2(0.0f); // top-left corner of slot 0
+    float hotbarSlotSize = 0.0f;
+    float hotbarSlotGap = 0.0f;
+
+    // Top-right buttons (pause/menu, chat, view) - shared layout, same reason as above
+    glm::vec2 topBtnPause = glm::vec2(-1.0f);
+    glm::vec2 topBtnChat = glm::vec2(-1.0f);
+    glm::vec2 topBtnView = glm::vec2(-1.0f);
+    float topBtnRadius = 0.0f;
+
+    // One-shot outputs: Engine reads these once per frame then resets them.
+    int hotbarTapIndex = -1;        // index of a hotbar slot just tapped, else -1
+    bool modeTogglePressed = false; // pause button tapped -> toggle creative/survival
+                                     // (placeholder control until a real pause menu exists)
 
 private:
     static const int MAX_POINTERS = 10;
@@ -53,7 +67,7 @@ private:
         bool active = false;
         float x = 0.0f, y = 0.0f;
         float startX = 0.0f, startY = 0.0f;
-        int role = 0; // 0=none, 1=joystick, 2=look, 3=jump, 4=place/break
+        int role = 0; // 0=none, 1=joystick, 2=look, 3=jump, 4=UI (hotbar/top bar, consumed on down)
         float startTime = 0.0f;
         float holdElapsed = 0.0f;
         bool longPressTriggered = false;

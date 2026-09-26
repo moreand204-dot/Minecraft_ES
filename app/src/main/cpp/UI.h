@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "Shader.h"
 #include "InputManager.h"
+#include "Player.h"
 
 class UI {
 public:
@@ -13,7 +14,7 @@ public:
 
     bool init();
     void resize(int w, int h);
-    void render(InputManager& input, const glm::vec3& playerPos, float timeOfDay);
+    void render(InputManager& input, Player& player, float timeOfDay);
 
     void destroy();
 
@@ -26,9 +27,6 @@ private:
 
     int screenWidth = 0, screenHeight = 0;
 
-    // Hotbar layout, computed each frame by drawHotbar() and reused by drawHeartsAndHunger()
-    float hotbarX = 0.0f, hotbarY = 0.0f, hotbarSlot = 0.0f, hotbarGap = 0.0f;
-
     void initQuad();
     void initCircle();
 
@@ -36,9 +34,9 @@ private:
     void drawCircle(float cx, float cy, float radius, float r, float g, float b, float a, float aspect);
     void drawTexturedQuad(GLuint texture, float x, float y, float w, float h);
 
-    void drawHotbar(InputManager& input);
-    void drawHeartsAndHunger(float aspect);
-    void drawTopBar(float aspect);
+    void drawHotbar(InputManager& input, Player& player);
+    void drawHeartsAndHunger(InputManager& input, float aspect);
+    void drawTopBar(InputManager& input, float aspect, Player& player);
 
     GLuint createTextTexture(const char* text, int fontSize, int* outW, int* outH);
 };

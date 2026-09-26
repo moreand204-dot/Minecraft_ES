@@ -14,6 +14,25 @@ void InputManager::setScreenSize(int w, int h) {
     // Jump button bottom-right
     jumpButtonRadius = h * 0.08f;
     jumpButtonCenter = glm::vec2(w - margin - jumpButtonRadius * 2.5f, h - margin - jumpButtonRadius);
+
+    // Hotbar (bottom center) - must match UI::drawHotbar exactly
+    hotbarSlotSize = h * 0.065f;
+    hotbarSlotGap = hotbarSlotSize * 0.12f;
+    float totalW = HOTBAR_SIZE * hotbarSlotSize + (HOTBAR_SIZE - 1) * hotbarSlotGap;
+    hotbarOrigin.x = (w - totalW) * 0.5f;
+    hotbarOrigin.y = h - h * 0.035f - hotbarSlotSize;
+
+    // Top-right buttons - must match UI::drawTopBar exactly
+    topBtnRadius = h * 0.028f;
+    float topMargin = h * 0.025f;
+    float spacing = topBtnRadius * 2.6f;
+    float topY = topMargin + topBtnRadius;
+    float topX = w - topMargin - topBtnRadius;
+    topBtnPause = glm::vec2(topX, topY);
+    topX -= spacing;
+    topBtnChat = glm::vec2(topX, topY);
+    topX -= spacing;
+    topBtnView = glm::vec2(topX, topY);
 }
 
 void InputManager::reset() {
@@ -23,6 +42,8 @@ void InputManager::reset() {
     breakPressed = false;
     placePressed = false;
     lookActive = false;
+    hotbarTapIndex = -1;
+    modeTogglePressed = false;
 }
 
 void InputManager::onTouchDown(int id, float x, float y) {
@@ -44,6 +65,30 @@ void InputManager::onTouchDown(int id, float x, float y) {
     float jdx = x - jumpButtonCenter.x;
     float jdy = y - jumpButtonCenter.y;
     float distJump = std::sqrt(jdx * jdx + jdy * jdy);
+
+    // Hotbar slots: a tap here selects that slot and must NOT rotate the camera
+    // or be treated as a place/break tap on the world.
+    if (hotbarSlotSize > 0.0f &&
+        x >= hotbarOrigin.x && y >= hotbarOrigin.y &&
+        x <= hotbarOrigin.x + HOTBAR_SIZE * hotbarSlotSize + (HOTBAR_SIZE - 1) * hotbarSlotGap &&
+        y <= hotbarOrigin.y + hotbarSlotSize) {
+        float rel = x - hotbarOrigin.x;
+        int idx = (int)(rel / (hotbarSlotSize + hotbarSlotGap));
+        if (idx >= 0 && idx < HOTBAR_SIZE) {
+            p.role = 4;
+            selectedSlot = idx;
+            hotbarTapIndex = idx;
+            return;
+        }
+    }
+
+    // Top-right buttons
+    float pdx = x - topBtnPause.x, pdy = y - topBtnPause.y;
+    if (topBtnRadius > 0.0f && std::sqrt(pdx * pdx + pdy * pdy) < topBtnRadius * 1.5f) {
+        p.role = 4;
+        modeTogglePressed = true; // temporary: pause button = toggle creative/survival
+        return;
+    }
 
     if (distJoy < joystickRadius * 1.6f) {
         p.role = 1; // joystick

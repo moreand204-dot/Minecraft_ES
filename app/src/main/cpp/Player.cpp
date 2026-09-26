@@ -5,6 +5,74 @@
 Player::Player() {
     position = glm::vec3(0.5f, 100.0f, 0.5f);
     velocity = glm::vec3(0.0f);
+    setGameMode(GameMode::Survival);
+}
+
+void Player::setGameMode(GameMode mode) {
+    gameMode = mode;
+    for (int i = 0; i < HOTBAR_SIZE; ++i) {
+        hotbar[i].type = BlockType::Air;
+        hotbar[i].count = 0;
+    }
+    if (mode == GameMode::Creative) {
+        // Fixed creative palette. Count is irrelevant in creative (never consumed)
+        // but is set to 1 just so the slot renders as "occupied".
+        static const BlockType palette[] = {
+            BlockType::Grass, BlockType::Dirt, BlockType::Stone,
+            BlockType::Wood,  BlockType::Leaves, BlockType::Sand
+        };
+        int n = (int)(sizeof(palette) / sizeof(palette[0]));
+        for (int i = 0; i < n && i < HOTBAR_SIZE; ++i) {
+            hotbar[i].type = palette[i];
+            hotbar[i].count = 1;
+        }
+    }
+    // Survival starts with an empty hotbar: you fill it by breaking blocks.
+    selectedSlot = 0;
+}
+
+void Player::toggleGameMode() {
+    setGameMode(gameMode == GameMode::Survival ? GameMode::Creative : GameMode::Survival);
+}
+
+BlockType Player::getSelectedBlockType() const {
+    return hotbar[selectedSlot].type;
+}
+
+void Player::addToInventory(BlockType type) {
+    if (gameMode == GameMode::Creative) return; // creative never needs pickups
+    if (type == BlockType::Air) return;
+
+    // 1) stack onto an existing slot of the same type (cap 64, like Minecraft)
+    for (int i = 0; i < HOTBAR_SIZE; ++i) {
+        if (hotbar[i].type == type && hotbar[i].count < 64) {
+            hotbar[i].count++;
+            return;
+        }
+    }
+    // 2) otherwise use the first empty slot
+    for (int i = 0; i < HOTBAR_SIZE; ++i) {
+        if (hotbar[i].type == BlockType::Air || hotbar[i].count <= 0) {
+            hotbar[i].type = type;
+            hotbar[i].count = 1;
+            return;
+        }
+    }
+    // Hotbar full: block is lost (no separate backpack/inventory grid yet)
+}
+
+bool Player::consumeSelected() {
+    HotbarSlot& slot = hotbar[selectedSlot];
+    if (gameMode == GameMode::Creative) {
+        return slot.type != BlockType::Air; // unlimited, just needs a block chosen
+    }
+    if (slot.type == BlockType::Air || slot.count <= 0) return false;
+    slot.count--;
+    if (slot.count <= 0) {
+        slot.type = BlockType::Air;
+        slot.count = 0;
+    }
+    return true;
 }
 
 glm::vec3 Player::getForward() const {

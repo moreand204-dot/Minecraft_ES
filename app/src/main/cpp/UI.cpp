@@ -172,13 +172,28 @@ void UI::drawCircle(float cx, float cy, float radius, float r, float g, float b,
     glBindVertexArray(0);
 }
 
-void UI::drawHotbar(InputManager& input) {
-    float slot = screenHeight * 0.065f;
-    float gap = slot * 0.12f;
+// Rough color swatch per block type, used to show what's in a hotbar slot
+// (the project has no icon textures yet, so a flat color stands in for now).
+static void blockColor(BlockType t, float& r, float& g, float& b) {
+    switch (t) {
+        case BlockType::Grass:  r = 0.35f; g = 0.65f; b = 0.25f; break;
+        case BlockType::Dirt:   r = 0.45f; g = 0.30f; b = 0.15f; break;
+        case BlockType::Stone:  r = 0.55f; g = 0.55f; b = 0.55f; break;
+        case BlockType::Wood:   r = 0.50f; g = 0.35f; b = 0.15f; break;
+        case BlockType::Leaves: r = 0.20f; g = 0.50f; b = 0.15f; break;
+        case BlockType::Sand:   r = 0.80f; g = 0.75f; b = 0.55f; break;
+        case BlockType::Bedrock:r = 0.25f; g = 0.25f; b = 0.25f; break;
+        case BlockType::Water:  r = 0.20f; g = 0.35f; b = 0.85f; break;
+        default:                r = 0.0f;  g = 0.0f;  b = 0.0f; break;
+    }
+}
+
+void UI::drawHotbar(InputManager& input, Player& player) {
+    float slot = input.hotbarSlotSize;
+    float gap = input.hotbarSlotGap;
+    float startX = input.hotbarOrigin.x;
+    float y = input.hotbarOrigin.y;
     int n = InputManager::HOTBAR_SIZE;
-    float totalW = n * slot + (n - 1) * gap;
-    float startX = (screenWidth - totalW) * 0.5f;
-    float y = screenHeight - screenHeight * 0.035f - slot;
 
     for (int i = 0; i < n; ++i) {
         float x = startX + i * (slot + gap);
@@ -189,22 +204,33 @@ void UI::drawHotbar(InputManager& input) {
             drawRect(x - pad, y - pad, slot + pad * 2.0f, slot + pad * 2.0f, 1.0f, 1.0f, 1.0f, 0.9f);
         }
         drawRect(x, y, slot, slot, 0.0f, 0.0f, 0.0f, selected ? 0.35f : 0.25f);
-    }
 
-    hotbarX = startX;
-    hotbarY = y;
-    hotbarSlot = slot;
-    hotbarGap = gap;
+        HotbarSlot& item = player.hotbar[i];
+        if (item.type != BlockType::Air) {
+            float r, g, b;
+            blockColor(item.type, r, g, b);
+            float pad = slot * 0.16f;
+            drawRect(x + pad, y + pad, slot - pad * 2.0f, slot - pad * 2.0f, r, g, b, 0.95f);
+
+            // Stack count shown as a small fill bar along the bottom edge of the slot
+            // instead of a number (no font/text rendering in the project yet).
+            if (player.gameMode == GameMode::Survival) {
+                float frac = glm::clamp(item.count / 64.0f, 0.05f, 1.0f);
+                float barH = slot * 0.08f;
+                drawRect(x + pad, y + slot - pad - barH, (slot - pad * 2.0f) * frac, barH, 1.0f, 1.0f, 1.0f, 0.85f);
+            }
+        }
+    }
 }
 
-void UI::drawHeartsAndHunger(float aspect) {
-    float slot = hotbarSlot > 0.0f ? hotbarSlot : screenHeight * 0.065f;
+void UI::drawHeartsAndHunger(InputManager& input, float aspect) {
+    float slot = input.hotbarSlotSize;
     float pipR = slot * 0.16f;
     float pipSpacing = slot * 0.38f;
-    float rowY = hotbarY - slot * 0.75f;
+    float rowY = input.hotbarOrigin.y - slot * 0.75f;
 
     // Hearts: left-aligned above the hotbar (health is not simulated yet, so shown full)
-    float heartsStartX = hotbarX + pipR;
+    float heartsStartX = input.hotbarOrigin.x + pipR;
     for (int i = 0; i < 10; ++i) {
         float cx = heartsStartX + i * pipSpacing;
         drawCircle(cx, rowY, pipR * 1.25f, 0.0f, 0.0f, 0.0f, 0.35f, aspect); // outline
@@ -212,7 +238,8 @@ void UI::drawHeartsAndHunger(float aspect) {
     }
 
     // Hunger: right-aligned above the hotbar (not simulated yet, shown full)
-    float hungerEndX = hotbarX + (InputManager::HOTBAR_SIZE * hotbarSlot + (InputManager::HOTBAR_SIZE - 1) * hotbarGap) - pipR;
+    float hotbarWidth = InputManager::HOTBAR_SIZE * slot + (InputManager::HOTBAR_SIZE - 1) * input.hotbarSlotGap;
+    float hungerEndX = input.hotbarOrigin.x + hotbarWidth - pipR;
     for (int i = 0; i < 10; ++i) {
         float cx = hungerEndX - i * pipSpacing;
         drawCircle(cx, rowY, pipR * 1.25f, 0.0f, 0.0f, 0.0f, 0.35f, aspect); // outline
@@ -220,30 +247,32 @@ void UI::drawHeartsAndHunger(float aspect) {
     }
 }
 
-void UI::drawTopBar(float aspect) {
-    float margin = screenHeight * 0.025f;
-    float r = screenHeight * 0.028f;
-    float spacing = r * 2.6f;
-    float y = margin + r;
-    float x = screenWidth - margin - r;
+void UI::drawTopBar(InputManager& input, float aspect, Player& player) {
+    float r = input.topBtnRadius;
 
-    // Pause / menu
-    drawCircle(x, y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
-    drawRect(x - r * 0.35f, y - r * 0.45f, r * 0.22f, r * 0.9f, 1.0f, 1.0f, 1.0f, 0.9f);
-    drawRect(x + r * 0.1f, y - r * 0.45f, r * 0.22f, r * 0.9f, 1.0f, 1.0f, 1.0f, 0.9f);
+    // Pause / menu -- currently doubles as the Creative/Survival toggle
+    // (placeholder control until a real pause menu screen exists)
+    glm::vec2 c = input.topBtnPause;
+    drawCircle(c.x, c.y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
+    if (player.gameMode == GameMode::Creative) {
+        drawCircle(c.x, c.y, r * 0.55f, 0.3f, 0.85f, 0.3f, 0.9f, aspect); // green dot = Creative
+    } else {
+        drawRect(c.x - r * 0.35f, c.y - r * 0.45f, r * 0.22f, r * 0.9f, 1.0f, 1.0f, 1.0f, 0.9f);
+        drawRect(c.x + r * 0.1f, c.y - r * 0.45f, r * 0.22f, r * 0.9f, 1.0f, 1.0f, 1.0f, 0.9f);
+    }
 
-    // Chat
-    x -= spacing;
-    drawCircle(x, y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
-    drawRect(x - r * 0.5f, y - r * 0.3f, r * 1.0f, r * 0.6f, 1.0f, 1.0f, 1.0f, 0.9f);
+    // Chat (not implemented yet - placeholder)
+    c = input.topBtnChat;
+    drawCircle(c.x, c.y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
+    drawRect(c.x - r * 0.5f, c.y - r * 0.3f, r * 1.0f, r * 0.6f, 1.0f, 1.0f, 1.0f, 0.9f);
 
-    // View / perspective toggle
-    x -= spacing;
-    drawCircle(x, y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
-    drawCircle(x, y, r * 0.5f, 1.0f, 1.0f, 1.0f, 0.9f, aspect);
+    // View / perspective toggle (not implemented yet - placeholder)
+    c = input.topBtnView;
+    drawCircle(c.x, c.y, r, 0.0f, 0.0f, 0.0f, 0.35f, aspect);
+    drawCircle(c.x, c.y, r * 0.5f, 1.0f, 1.0f, 1.0f, 0.9f, aspect);
 }
 
-void UI::render(InputManager& input, const glm::vec3& playerPos, float timeOfDay) {
+void UI::render(InputManager& input, Player& player, float timeOfDay) {
     (void)timeOfDay;
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -273,12 +302,11 @@ void UI::render(InputManager& input, const glm::vec3& playerPos, float timeOfDay
     drawCircle(bx, by, br * 0.75f, 0.4f, 0.9f, 0.4f, 0.6f, aspect);
 
     // HUD: hotbar + hearts/hunger + top bar (matches the reference layout)
-    drawHotbar(input);
-    drawHeartsAndHunger(aspect);
-    drawTopBar(aspect);
+    drawHotbar(input, player);
+    drawHeartsAndHunger(input, aspect);
+    drawTopBar(input, aspect, player);
 
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-    (void)playerPos;
 }

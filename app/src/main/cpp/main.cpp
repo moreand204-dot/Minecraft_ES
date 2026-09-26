@@ -209,11 +209,18 @@ void Engine::createSurface() {
 
         if (SaveManager::saveExists(savePath)) {
             SaveManager::loadWorld(world.get(), player.get(), savePath);
+        } else {
+            // Fresh world: drop the player right above the actual terrain at spawn
+            // instead of a fixed height, so there's no long fall through empty sky.
+            double h = world->getTerrainHeight(player->position.x, player->position.z);
+            player->position.y = (float)h + 2.0f;
         }
 
-        // If player fell below world, teleport up
+        // If player fell below world, teleport up to just above the real terrain
+        // at their current X/Z (not a fixed height that may be far from the ground).
         if (player->position.y < 1.0f) {
-            player->position.y = 100.0f;
+            double h = world->getTerrainHeight(player->position.x, player->position.z);
+            player->position.y = (float)h + 5.0f;
         }
 
         initialized = true;
@@ -286,6 +293,16 @@ void Engine::update(float dt) {
 
     player->update(dt, world.get(), moveInput, jump);
 
+    // Keep the player's selected hotbar slot in sync with what the touch UI picked.
+    player->selectedSlot = input.selectedSlot;
+
+    // Pause-button tap (placeholder until a real pause menu exists): toggle game mode.
+    if (input.modeTogglePressed) {
+        player->toggleGameMode();
+        LOGI("Game mode switched to %s", player->gameMode == GameMode::Creative ? "Creative" : "Survival");
+        input.modeTogglePressed = false;
+    }
+
     // Update world (chunk loading)
     world->update(player->position, 6);
 
@@ -299,6 +316,7 @@ void Engine::update(float dt) {
             BlockType t = world->getBlockAt(hit.x, hit.y, hit.z);
             if (t != BlockType::Bedrock) {
                 world->setBlockAt(hit.x, hit.y, hit.z, BlockType::Air);
+                player->addToInventory(t); // no-op in creative mode
                 LOGI("Broke block at %d,%d,%d", hit.x, hit.y, hit.z);
             }
         }
@@ -314,8 +332,9 @@ void Engine::update(float dt) {
             bool overlaps = std::abs(diff.x) < 0.8f && std::abs(diff.z) < 0.8f &&
                              (py >= (int)std::floor(player->position.y) &&
                               py <= (int)std::floor(player->position.y + player->height));
-            if (!overlaps) {
-                world->setBlockAt(px, py, pz, BlockType::Grass);
+            BlockType placeType = player->getSelectedBlockType();
+            if (!overlaps && placeType != BlockType::Air && player->consumeSelected()) {
+                world->setBlockAt(px, py, pz, placeType);
                 LOGI("Placed block at %d,%d,%d", px, py, pz);
             }
         }
@@ -339,7 +358,7 @@ void Engine::render() {
 
     LOGI("DBG pos=(%.1f,%.1f,%.1f) hit=%d t=%.2f glErr=0x%x", player->position.x, player->position.y, player->position.z, (int)hit.hit, timeOfDay, glGetError());
     renderer->render(world.get(), player.get(), timeOfDay, hit, hit.hit);
-    ui->render(input, player->position, timeOfDay);
+    ui->render(input, *player, timeOfDay);
 
     eglSwapBuffers(display, surface);
 }
